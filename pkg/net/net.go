@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"syscall"
 	"time"
 
 	trace_socket "github.com/0ne-zero/goTraceroute/pkg/net/socket"
@@ -120,6 +121,51 @@ func GetOutboundAddr(destIP net.IP) (net.IP, error) {
 	conn, err := net.Dial(network, net.JoinHostPort(destIP.String(), "80"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial: %w", err)
+	}
+	defer conn.Close()
+
+	localAddr, ok := conn.LocalAddr().(*net.UDPAddr)
+	if !ok {
+		return nil, errors.New("failed to cast LocalAddr to *net.UDPAddr")
+	}
+
+	return localAddr.IP, nil
+}
+
+// GetOutboundAddrForInterface is like GetOutboundAddr but resolves the source
+// address as if the traffic left through ifaceName, instead of following the
+// OS routing table. An empty ifaceName falls back to GetOutboundAddr.
+func GetOutboundAddrForInterface(destIP net.IP, ifaceName string) (net.IP, error) {
+	if ifaceName == "" {
+		return GetOutboundAddr(destIP)
+	}
+
+	af := GetIPFamily(destIP)
+	var network string
+	switch af {
+	case trace_socket.AF_INET:
+		network = "udp4"
+	case trace_socket.AF_INET6:
+		network = "udp6"
+	default:
+		return nil, fmt.Errorf("invalid destination IP: %v", destIP)
+	}
+
+	dialer := net.Dialer{
+		Control: func(_, _ string, c syscall.RawConn) error {
+			var sockErr error
+			if err := c.Control(func(fd uintptr) {
+				sockErr = trace_socket.SetBindToDeviceFD(fd, af, ifaceName)
+			}); err != nil {
+				return err
+			}
+			return sockErr
+		},
+	}
+
+	conn, err := dialer.Dial(network, net.JoinHostPort(destIP.String(), "80"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial via interface %q: %w", ifaceName, err)
 	}
 	defer conn.Close()
 

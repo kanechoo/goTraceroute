@@ -95,6 +95,7 @@ func main() {
 	opts.SetDelayMs(100)                        // 100 ms delay between probes
 	opts.SetRetries(1)                          // Retry once if probe fails
 	opts.SetMaxConsecutiveNoReplies(5)          // Stop early if 5 consecutive TTL probes get no replies (no ICMP or TCP response)
+	opts.SetBindInterface("en1")                // Force probes to leave via a specific NIC (Darwin/Linux), e.g. to bypass a VPN that owns the default route
 
 	// --- Synchronous traceroute ---
 

@@ -57,7 +57,7 @@ func TracerouteContext(ctx context.Context, dest string, opts *options.Options, 
 	defer outboundSocket.Close()
 	defer inboundICMPSocket.Close()
 
-	outboundIP, err := trace_net.GetOutboundAddr(destAddr)
+	outboundIP, err := trace_net.GetOutboundAddrForInterface(destAddr, opts.BindInterface())
 	if err != nil {
 		return err
 	}

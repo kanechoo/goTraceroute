@@ -124,6 +124,11 @@ func (s *unixSocket) Close() error {
 	return unix.Close(s.fd)
 }
 
+// BindToDevice pins the socket's egress interface to ifaceName.
+func (s *unixSocket) BindToDevice(ifaceName string) error {
+	return bindToDeviceFD(uintptr(s.fd), s.af, ifaceName)
+}
+
 // toSockaddrInet4 converts net.IP to unix SockaddrInet4 for IPv4
 func toSockaddrInet4(ip net.IP, port int) (*unix.SockaddrInet4, error) {
 	if ip = ip.To4(); ip == nil {

@@ -22,8 +22,20 @@ type Socket interface {
 	// SetSockOptTimeval sets a socket option with a timeval duration
 	SetSockOptTimeval(level, opt int, tv *time.Duration) error
 
+	// BindToDevice pins the socket's egress interface to ifaceName.
+	// Unsupported on some platforms; returns an error in that case.
+	BindToDevice(ifaceName string) error
+
 	// Close closes the socket and releases resources
 	Close() error
+}
+
+// SetBindToDeviceFD pins an already-created socket file descriptor to the
+// named network interface. It is the low-level primitive shared by the
+// Socket implementations and by dialers that need to pick a source address
+// on a specific interface.
+func SetBindToDeviceFD(fd uintptr, af int, ifaceName string) error {
+	return bindToDeviceFD(fd, af, ifaceName)
 }
 
 func NewSocket(family, typ, proto int) (Socket, error) {

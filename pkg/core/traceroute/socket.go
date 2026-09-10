@@ -71,5 +71,26 @@ func setupSockets(opts *options.Options, af int) (trace_socket.Socket, trace_soc
 
 	// Create raw ICMP socket to receive ICMP Time Exceeded / Destination Unreachable packets when using UDP protocol to probe
 	inboundICMPSocket, err := icmp.CreateICMPSocket(opts, af)
-	return outboundSocket, inboundICMPSocket, err
+	if err != nil {
+		outboundSocket.Close()
+		return nil, nil, err
+	}
+
+	// Pin both sockets to the requested interface so probes leave through it
+	// and replies are read back from the same interface. This is what allows
+	// bypassing a VPN/tunnel that owns the default route.
+	if iface := opts.BindInterface(); iface != "" {
+		if err := outboundSocket.BindToDevice(iface); err != nil {
+			outboundSocket.Close()
+			inboundICMPSocket.Close()
+			return nil, nil, err
+		}
+		if err := inboundICMPSocket.BindToDevice(iface); err != nil {
+			outboundSocket.Close()
+			inboundICMPSocket.Close()
+			return nil, nil, err
+		}
+	}
+
+	return outboundSocket, inboundICMPSocket, nil
 }

@@ -129,6 +129,14 @@ func (s *windowsSocket) Close() error {
 	return windows.Closesocket(s.handle)
 }
 
+// BindToDevice is not supported on Windows.
+func (s *windowsSocket) BindToDevice(ifaceName string) error {
+	if ifaceName == "" {
+		return nil
+	}
+	return errors.New("binding a socket to a network interface is not supported on Windows")
+}
+
 // toSockaddrInet4 converts net.IP to windows SockaddrInet4 for IPv4
 func toSockaddrInet4(ip net.IP, port int) (*windows.SockaddrInet4, error) {
 	if ip = ip.To4(); ip == nil {

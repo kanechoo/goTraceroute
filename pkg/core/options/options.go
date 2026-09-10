@@ -36,6 +36,7 @@ type Options struct {
 	preferAddressFamily     int
 	probeProtocol           Protocol
 	maxConsecutiveNoReplies int
+	bindInterface           string
 }
 
 // NewTracerouteOptions returns Options initialized with default values
@@ -89,6 +90,12 @@ func (o *Options) MaxConsecutiveNoReplies() int {
 	return o.maxConsecutiveNoReplies
 }
 
+// BindInterface returns the network interface name that probes are bound to.
+// Empty means the OS routing table decides the egress interface.
+func (o *Options) BindInterface() string {
+	return o.bindInterface
+}
+
 // Setters
 
 // SetUDPDestPort sets the UDP destination port for probes
@@ -125,4 +132,16 @@ func (o *Options) SetProbeProtocol(protocol Protocol) { o.probeProtocol = protoc
 // A TTL counts toward this when no host responds after all retries; the counter resets when a response is received
 func (o *Options) SetMaxConsecutiveNoReplies(maxConsecutive int) {
 	o.maxConsecutiveNoReplies = maxConsecutive
+}
+
+// SetBindInterface forces probes (and the source address lookup) to use the
+// given network interface instead of letting the OS routing table pick the
+// egress interface. This is useful when a VPN/tunnel owns the default route
+// but real measurements must leave through a physical NIC.
+// Pass an empty string to restore the default routing behavior.
+//
+// On Darwin the interface is bound with IP_BOUND_IF, on Linux with
+// SO_BINDTODEVICE. Other platforms return an error when binding is attempted.
+func (o *Options) SetBindInterface(ifaceName string) {
+	o.bindInterface = ifaceName
 }
